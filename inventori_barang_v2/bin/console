@@ -1,0 +1,89 @@
+<?php
+
+// 1. AUTOLOADER SEDERHANA
+// Ini berfungsi agar kita tidak perlu 'require' file satu per satu secara manual.
+// Script ini otomatis mencari file class di folder src/
+spl_autoload_register(function ($class) {
+    // Prefix namespace
+    $prefix = 'Inventory\\';
+    
+    // Base directory untuk namespace prefix (folder src/)
+    $base_dir = __DIR__ . '/../src/';
+
+    // Cek apakah class menggunakan prefix ini
+    $len = strlen($prefix);
+    if (strncmp($prefix, $class, $len) !== 0) {
+        return;
+    }
+
+    // Ambil nama class relatif (setelah prefix)
+    $relative_class = substr($class, $len);
+
+    // Ganti namespace separator (\) dengan directory separator (/) 
+    // dan tambahkan .php
+    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
+
+    // Jika file ada, require
+    if (file_exists($file)) {
+        require $file;
+    }
+});
+
+// 2. LOGIKA UTAMA APLIKASI
+use Inventory\Controller\BarangController;
+
+// Ambil argumen dari terminal
+// $argv[0] = bin/console
+// $argv[1] = command (misal: barang:add)
+$command = $argv[1] ?? null;
+
+// Helper function sederhana untuk parsing argumen --flag value
+// Contoh input: --nama "Pensil" --harga 2000
+function parseArgs($argv) {
+    $args = [];
+    for ($i = 2; $i < count($argv); $i++) {
+        if (strpos($argv[$i], '--') === 0) {
+            $key = substr($argv[$i], 2); // Hapus '--'
+            $value = $argv[$i+1] ?? null;
+            // Cek apakah value valid (bukan flag lain)
+            if ($value && strpos($value, '--') !== 0) {
+                $args[$key] = $value;
+                $i++; // Skip next index karena sudah diambil sebagai value
+            }
+        }
+    }
+    return $args;
+}
+
+$controller = new BarangController();
+
+// 3. ROUTER / SWITCH COMMAND
+switch ($command) {
+    case 'barang:list':
+        $controller->list();
+        break;
+
+    case 'barang:add':
+        $args = parseArgs($argv);
+        $controller->add($args);
+        break;
+
+    case 'barang:delete':
+        $args = parseArgs($argv);
+        $controller->delete($args);
+        break;
+
+    case 'help':
+    case null:
+        echo "Aplikasi Inventaris Barang CLI\n";
+        echo "Perintah tersedia:\n";
+        echo "  php bin/console barang:list\n";
+        echo "  php bin/console barang:add --nama \"[Nama]\" --harga [Angka] --stock [Angka]\n";
+        echo "  php bin/console barang:delete --id [ID]\n";
+        break;
+
+    default:
+        echo "\033[31mCommand '$command' tidak dikenali.\033[0m\n";
+        echo "Gunakan 'php bin/console help' untuk bantuan.\n";
+        break;
+}
